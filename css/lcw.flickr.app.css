@@ -1,0 +1,21 @@
+figure {
+    width: 200px;
+    height: 300px;
+    float: left;
+    overflow: hidden;
+}
+
+figcaption {
+    text-align: center;
+}
+
+image {
+    cursor: pointer;
+}
+
+.lcw-flickr-header {
+    width: 100%;
+    text-align: center;
+    margin-top: 100px;
+    margin-bottom: 150px;
+}
