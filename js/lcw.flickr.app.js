@@ -30,12 +30,12 @@ LCW.Flickr.View = (function(){
     var imageGrid;
     
     // Event handlers
-    window.document.body.addEventListener('nmflickr.app.publicphotosloaded', function(){
+    window.document.body.addEventListener('pixelshop.app.publicphotosloaded', function(){
         imageGrid = new LCW.Flickr.View.ImageGrid('.main-container');
         imageGrid.render();
     });
 
-    window.document.body.addEventListener('nmflickr.view.imagegrid.rendered', function(){        
+    window.document.body.addEventListener('pixelshop.view.imagegrid.rendered', function(){        
         var items;
         var item;
         var domNode = imageGrid.getDomNode();
@@ -147,8 +147,8 @@ LCW.Flickr.View = (function(){
     var domNode = null; 
 
      var templates = {
-        'wrapper': '<div class="nmflickr-view-itemgrid">{{items}}</div>',
-        'item': '<div class="nmflickr-view-itemgrid-item" data-tags="{{tags}}" data-link="{{link}}" ><figure><svg id="nmflickr-image-{{index}}" width="100%" height="100%" preserveAspectRatio="xMinYMin meet"><defs><filter id="filters_{{index}}"></filter></defs><image x="0" y="0" width="{{width}}" height="{{height}}" xlink:href="{{media.m}}" data-id="nmflickr_item_{{index}}" data-index="{{index}}"/></svg><figcaption>{{title}}</figcaptioin> </figure></div>'
+        'wrapper': '<div class="pixelshop-view-itemgrid">{{items}}</div>',
+        'item': '<div class="pixelshop-view-itemgrid-item" data-tags="{{tags}}" data-link="{{link}}" ><figure><svg id="pixelshop-image-{{index}}" width="{{width}}" height="{{height}}" preserveAspectRatio="xMinYMin meet"><defs><filter id="filters_{{index}}"></filter></defs><image x="0" y="0" width="{{width}}" height="{{height}}" xlink:href="{{media.m}}" data-id="pixelshop-item-{{index}}" data-index="{{index}}"/></svg><figcaption>{{title}}</figcaptioin> </figure></div>'
     };
 
     var getDomNode = function(){
@@ -191,7 +191,7 @@ LCW.Flickr.View = (function(){
             node.innerHTML = templates.wrapper.replace('{{items}}', resultStr);                                                
         }
         
-        LCW.Flickr.App.triggerEvent('nmflickr.view.imagegrid.rendered', {});
+        LCW.Flickr.App.triggerEvent('pixelshop.view.imagegrid.rendered', {});
     };
 
     return {
@@ -204,63 +204,6 @@ LCW.Flickr.View = (function(){
     };
 };
 
- LCW.Flickr.View.ImageDetail = function(cssSelector) {
-    var selector = cssSelector;
-    var domNode = null; 
-    var templates = {
-        'wrapper': '<div class="nmflickr-view-itemdetail">{{items}}</div>',
-        'item': '<div class="nmflickr-view-itemdetail-item" data-tags="{{tags}}" data-link="{{link}}" ><figure><svg id="nmflickr-image-{{index}}" width="100%" height="100%" preserveAspectRatio="xMinYMin meet"><defs><filter id="filters_{{index}}"></filter></defs><image x="0" y="0" width="{{width}}" height="{{height}}" xlink:href="{{media.m}}" data-id="nmflickr_item_{{index}}" data-index="{{index}}"/></svg><figcaption>{{title}}</figcaptioin> </figure></div>'
-    };
-
-    var getDomNode = function(){
-        if(domNode === null){
-
-            var node = window.document.querySelector(selector);
-
-            if(node !== undefined){
-                domNode = node;
-                return domNode;
-            }else{
-                window.console.error('LCW.Flickr.View.ImageDetail.getDomNode(): ImageDetail.selector does not match any DOM Element.');
-            }
-
-        }else{
-            return domNode;
-        }
-    };
-
-    var render = function(collection, cb){
-        var result = [];
-        var resultStr = '';
-        var node;
-
-        if(collection === undefined){
-            collection = LCW.Flickr.App.getLoadedPhotos();
-        }
-
-        collection.forEach(function(item, index){
-            var templ = templates.item;
-            result.push(LCW.Flickr.View.applyTemplate(item, templ));
-        });
-
-        if(cb instanceof Function){
-            cb(result);
-        }else{
-            resultStr = result.join();
-            node = getDomNode();                        
-            node.innerHTML = templates.wrapper.replace('{{items}}', resultStr);                                                
-        }
-    };
-
-    return {
-        'setSelector': function(val) {
-            selector = val;
-        },
-        'templates': templates,
-        'render': render,
-        'getDomNode': getDomNode
-    };
-};
 
 
 /********************************************************************************************
@@ -283,12 +226,19 @@ LCW.Flickr.JSONProvider = function(flickrSession){
         LCW.Util.XHR.getJSON(serviceUrl, {}, function( data ) {
 
             data.items.forEach(function( item, index ) {                
-                //item.media = item.media.m;
-                item.index = index;
-                item.id = ('image_' + index);
-                item.height = '100%';
-                item.width = '100%';
-                result.push(item);
+                var resultIndex = result.length + 1;
+                
+                result[resultIndex] = new LCW.Flickr.Image(item.media.m, function(img){
+                    var svgImage = window.document.querySelector('[data-id=pixelshop-item-' + index + ']');
+                    svgImage.setAttribute('width', img.width);
+                    svgImage.setAttribute('height', img.height);
+                });
+                
+                result[resultIndex].media = item.media;
+                result[resultIndex].index = index;
+                result[resultIndex].id = ('pixelshop-image-' + index);
+                result[resultIndex].height = '100%';
+                result[resultIndex].width = '100%';
 
             });
             
@@ -296,7 +246,7 @@ LCW.Flickr.JSONProvider = function(flickrSession){
                 cb(result);
             }
             
-            LCW.Flickr.App.triggerEvent('nmflickr.idataprovider.dataloaded', {});
+            LCW.Flickr.App.triggerEvent('pixelshop.idataprovider.dataloaded', {});
             
             return result;
             
@@ -342,18 +292,51 @@ LCW.Flickr.Gallery = function(galleryUrl){
 * LCW.Flickr.Image
 ********************************************************************************************/
 
-LCW.Flickr.Image = function(){
-
+LCW.Flickr.Image = function(src, onImageloaded){
+    this.id = '';
+    this.index = 0;
     this.title = '';
     this.link = '';
     this.media = {s:'',m:'',b:''};
-    this.date_taken = '';
     this.description = '';
     this.published = '';
     this.author = '';
     this.author_id = '';
-    this.tags = [];
-    this.domNode = null;
+    this.tags = [];  
+    this.width = 0;
+    this.height = 0;
+    
+    var domNode = null;  
+    
+    var onLoaded = function(){
+        width = domNode.width;
+        height = domNode.height;
+        
+        if(onImageloaded instanceof Function){
+            onImageloaded(this);
+        }
+    };
+    
+    if(src !== ''){
+        domNode = new Image();        
+        domNode.addEventListener('load', onLoaded);
+        domNode.src = src;
+    }
+    
+    return {
+        'getDomNode': function(){
+            return domNode;
+        },
+        'setDomNode': function(node){
+            if(domNode !== null){
+                domNode.removeEventListener('load', onLoaded);
+            }
+            
+            domNode = node;
+            domNode.addEventListener('load', onLoaded);
+        }
+
+    };
 
 };
 
@@ -578,11 +561,16 @@ LCW.Flickr.Pixelshop.Decor.fitToBBox = function(targetBBox, decor){
     var decorBox = decor.getBBox();
     var widthRatio = 0;
     var heightRatio = 0;
+    var scaleFactor = 0;
     
     heightRatio = (decorBox.height / targetBBox.height) * 1;
     widthRatio = (decorBox.width / targetBBox.width) * 1;
     
-    decorPath.style.transform = 'scale(' + heightRatio + ')';
+    console.log('heightRatio=' + heightRatio + ' widthRatio=' + widthRatio);
+    
+    scaleFactor = (widthRatio > heightRatio) ? heightRatio : widthRatio;
+    
+    decorPath.style.transform = 'scale(' + scaleFactor + ')';
     
     return decor;
 };
@@ -603,7 +591,6 @@ LCW.Flickr.Pixelshop.Filter = function(){
 LCW.Flickr.App = (function(){
     var apiProvider;
     var loadedPhotos = [];
-    var imageGrid = null;
         
     var setAPIProvider = function(IAPIProvider){
         apiProvider = IAPIProvider;
@@ -612,7 +599,7 @@ LCW.Flickr.App = (function(){
     var loadPublicPhotos = function(cb){
         apiProvider.feeds.public.getPhotos(function(imageList){
             loadedPhotos = imageList;            
-            triggerEvent('nmflickr.app.publicphotosloaded', {});
+            triggerEvent('pixelshop.app.publicphotosloaded', {});
             
         });
     };  
