@@ -121,7 +121,7 @@ LCW.Flickr.View = (function(){
             
         };
         
-        templTags.forEach(function(prop, index){
+        templTags.forEach(function(prop){
             propTag = prop.replace('{{', '');
             propTag = propTag.replace('}}', '');
 
@@ -148,7 +148,7 @@ LCW.Flickr.View = (function(){
 
      var templates = {
         'wrapper': '<div class="pixelshop-view-itemgrid">{{items}}</div>',
-        'item': '<div class="pixelshop-view-itemgrid-item" data-tags="{{tags}}" data-link="{{link}}" ><figure><svg id="pixelshop-image-{{index}}" width="{{width}}" height="{{height}}" preserveAspectRatio="xMinYMin meet"><defs><filter id="filters_{{index}}"></filter></defs><image x="0" y="0" width="{{width}}" height="{{height}}" xlink:href="{{media.m}}" data-id="pixelshop-item-{{index}}" data-index="{{index}}"/></svg><figcaption>{{title}}</figcaptioin> </figure></div>'
+        'item': '<div class="pixelshop-view-itemgrid-item" data-tags="{{tags}}" data-link="{{link}}" ><figure><svg id="pixelshop-image-{{index}}" width="{{width}}" height="{{height}}" preserveAspectRatio="xMinYMin meet"><defs><filter id="filters_{{index}}"></filter></defs><image x="0" y="0" width="100%" height="100%" xlink:href="{{media.m}}" data-id="pixelshop-item-{{index}}" data-index="{{index}}"/></svg><figcaption>{{title}}</figcaptioin> </figure></div>'
     };
 
     var getDomNode = function(){
@@ -179,7 +179,7 @@ LCW.Flickr.View = (function(){
             collection = LCW.Flickr.App.getLoadedPhotos();
         }
 
-        collection.forEach(function(item, index){            
+        collection.forEach(function(item){            
             result.push(LCW.Flickr.View.applyTemplate(item, templ, tags));
         });
 
@@ -229,7 +229,7 @@ LCW.Flickr.JSONProvider = function(flickrSession){
                 var resultIndex = result.length + 1;
                 
                 result[resultIndex] = new LCW.Flickr.Image(item.media.m, function(img){
-                    var svgImage = window.document.querySelector('[data-id=pixelshop-item-' + index + ']');
+                    var svgImage = window.document.getElementById('pixelshop-image-' + index);
                     svgImage.setAttribute('width', img.width);
                     svgImage.setAttribute('height', img.height);
                 });
@@ -365,6 +365,21 @@ LCW.Flickr.Pixelshop = (function(){
                 decorNode.appendChild(decorPath);
                 
                 break;
+
+            case 'star':
+                decorNode = window.document.createElementNS(svgns, 'clipPath');
+                decorNode.setAttribute('id', LCW.Util.generateId());
+                decorNode.setAttribute('class', 'pixelshop decor clip-path');
+                decorNode.setAttribute('clipPathUnits', 'userSpaceOnUse'); // objectBoundingBox, userSpaceOnUse
+
+                decorPath = window.document.createElementNS(svgns, 'path');
+                decorPath.setAttribute('class', 'pixelshop decor-clip-path');
+                decorPath.setAttribute('d', 'M 570.452,517.922 386.971,493.343 271.43,658.7 200.975,487.511 0,470.128 113.027,323.519 27.5933,140.778 211.075,165.357 326.616,0 397.071,171.189 598.045,188.572 485.019,335.181 Z');
+                decorNode.appendChild(decorPath);
+                
+                break;
+                
+                //
             
             default:    
                 decorNode = null;
@@ -373,7 +388,7 @@ LCW.Flickr.Pixelshop = (function(){
         if(decorNode !== null){
             return decorNode;
         }else{
-            window.console.error('LCW.Flickr.Pixelshop.getDecor(): Unrecognised decor type.')
+            window.console.error('LCW.Flickr.Pixelshop.getDecor(): Unrecognised decor type "' + decorName + '".');
         }    
     };
     
@@ -447,7 +462,7 @@ LCW.Flickr.Pixelshop = (function(){
         if(filterNode !== null){
             return filterNode;
         }else{
-            window.console.error('LCW.Flickr.Pixelshop.getFilter(): Unrecognised filter type.')
+            window.console.error('LCW.Flickr.Pixelshop.getFilter(): Unrecognised filter type "' + filterType + '".');
         }
         
     };
@@ -546,41 +561,73 @@ LCW.Flickr.Pixelshop = (function(){
     };
 }());
 
-LCW.Flickr.Pixelshop.Decor = function(){
+LCW.Flickr.Pixelshop.Decor = function(SVGDecorNode){
+    var domNode = null;
     this.decorType = ''; // frame, mask, clip
     this.amount = '';
+
     this.getDomNode = function(){
     
     };
+
+    this.init = function(){
     
+    };
+
+    //Init
     
 };
 
 LCW.Flickr.Pixelshop.Decor.fitToBBox = function(targetBBox, decor){
     var decorPath = decor.querySelector('path');
     var decorBox = decor.getBBox();
-    var widthRatio = 0;
-    var heightRatio = 0;
+    var decorWidthRatio = 0;
+    var decorHeightRatio = 0;
+    var scaleFactorX = 0;
+    var scaleFactorY = 0;
     var scaleFactor = 0;
+    var decorOffsetX = 0;
+    var decorOffsetY = 0;
     
-    heightRatio = (decorBox.height / targetBBox.height) * 1;
-    widthRatio = (decorBox.width / targetBBox.width) * 1;
+    // Fix: The offset should be calculated on the new, scaled values.
+    decorOffsetX = (decorBox.x - targetBBox.x) * 1;
+    decorOffsetY = (decorBox.y - targetBBox.y) * 1;
     
-    console.log('heightRatio=' + heightRatio + ' widthRatio=' + widthRatio);
+    decorHeightRatio = (decorBox.height / targetBBox.height) * 1;
+    decorWidthRatio = (decorBox.width / targetBBox.width) * 1;    
     
-    scaleFactor = (widthRatio > heightRatio) ? heightRatio : widthRatio;
+    console.log(decor);
     
-    decorPath.style.transform = 'scale(' + scaleFactor + ')';
+    console.log('decorHeightRatio=' + decorHeightRatio + ' decorWidthRatio=' + decorWidthRatio);
+    
+    scaleFactor = (decorWidthRatio > decorHeightRatio) ? decorWidthRatio : decorHeightRatio;
+    
+    // If the scale of the decore is over or under 100% we scale it down or up.
+    if(scaleFactor > 0){
+        scaleFactor = (1 / scaleFactor);
+    }else{
+        // scaling up so we dont need to flip things around
+    }
+    
+    decorPath.style.transform = 'scale(' + scaleFactor + ') translateX(-' + decorOffsetX + 'px) translateY(-' + decorOffsetY + 'px)';
     
     return decor;
 };
 
-LCW.Flickr.Pixelshop.Filter = function(){
+LCW.Flickr.Pixelshop.Filter = function(SVGFilterNode){
+    var domNode = null;
     this.filterType = '';
     this.opacity = '';
     this.getDomNode = function(){
     
     }; 
+    
+    this.init = function(){
+    
+    };
+    
+    //Init
+
 };
 
 /********************************************************************************************
