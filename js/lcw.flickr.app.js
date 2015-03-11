@@ -229,9 +229,18 @@ LCW.Flickr.JSONProvider = function(flickrSession){
                 var resultIndex = result.length + 1;
                 
                 result[resultIndex] = new LCW.Flickr.Image(item.media.m, function(img){
-                    var svgImage = window.document.getElementById('pixelshop-image-' + index);
+                    var svgDoc = window.document.getElementById('pixelshop-image-' + index);
+                    var svgImage = svgDoc.querySelector('image');
+
+                    svgDoc.setAttribute('viewBox', '0 0 ' + img.width + ' ' + img.height);
+                    svgDoc.setAttribute('width', img.width);
+                    svgDoc.setAttribute('height', img.height);
+
                     svgImage.setAttribute('width', img.width);
                     svgImage.setAttribute('height', img.height);
+
+
+
                 });
                 
                 result[resultIndex].media = item.media;
@@ -347,6 +356,39 @@ LCW.Flickr.Image = function(src, onImageloaded){
 
 LCW.Flickr.Pixelshop = (function(){
     
+
+    var getFrame = function(frameName){
+        var frameNode = null;
+        var framePath = null;
+        var svgns = 'http://www.w3.org/2000/svg';
+
+        switch (frameName) {
+
+            case 'vintage':
+                frameNode = window.document.createElementNS(svgns, 'clipPath');
+                frameNode.setAttribute('id', LCW.Util.generateId());
+                frameNode.setAttribute('class', 'pixelshop decor clip-path');
+                frameNode.setAttribute('clipPathUnits', 'userSpaceOnUse'); // objectBoundingBox, userSpaceOnUse
+
+                framePath = window.document.createElementNS(svgns, 'path');
+                framePath.setAttribute('class', 'pixelshop decor-clip-path');
+                framePath.setAttribute('d', 'M 345.283,225.857 A 113.857,113.857 0 0 1 231.426,339.714 113.857,113.857 0 0 1 117.569,225.857 113.857,113.857 0 0 1 231.426,112 113.857,113.857 0 0 1 345.283,225.857 Z');
+                frameNode.appendChild(framePath);
+
+                break;
+
+            default:
+                frameNode = null;
+        }
+
+        if(frameNode !== null){
+            return frameNode;
+        }else{
+            window.console.error('LCW.Flickr.Pixelshop.getDecor(): Unrecognised decor type "' + frameName + '".');
+        }
+
+    };
+
     var getDecor = function(decorName){
         var decorNode = null;
         var decorPath = null;
@@ -361,7 +403,8 @@ LCW.Flickr.Pixelshop = (function(){
 
                 decorPath = window.document.createElementNS(svgns, 'path');
                 decorPath.setAttribute('class', 'pixelshop decor-clip-path');
-                decorPath.setAttribute('d', 'M 345.283,225.857 A 113.857,113.857 0 0 1 231.426,339.714 113.857,113.857 0 0 1 117.569,225.857 113.857,113.857 0 0 1 231.426,112 113.857,113.857 0 0 1 345.283,225.857 Z');
+                decorPath.setAttribute('d', 'M12 21.35l-1.45-1.32c-5.15-4.67-8.55-7.75-8.55-11.53 0-3.08 2.42-5.5 5.5-5.5 1.74 0 3.41.81 4.5 2.09 1.09-1.28 2.76-2.09 4.5-2.09 3.08 0 5.5 2.42 5.5 5.5 0 3.78-3.4 6.86-8.55 11.54l-1.45 1.31z');
+
                 decorNode.appendChild(decorPath);
                 
                 break;
@@ -561,10 +604,31 @@ LCW.Flickr.Pixelshop = (function(){
     };
 }());
 
+LCW.Flickr.Pixelshop.Frame = function(SVGFrameNode){
+    var domNode = null;
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.cover = true;
+
+    this.getDomNode = function(){
+
+    };
+
+    this.init = function(){
+
+    };
+
+    //Init
+
+};
+
 LCW.Flickr.Pixelshop.Decor = function(SVGDecorNode){
     var domNode = null;
     this.decorType = ''; // frame, mask, clip
     this.amount = '';
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.cover = true;
 
     this.getDomNode = function(){
     
@@ -578,38 +642,54 @@ LCW.Flickr.Pixelshop.Decor = function(SVGDecorNode){
     
 };
 
-LCW.Flickr.Pixelshop.Decor.fitToBBox = function(targetBBox, decor){
-    var decorPath = decor.querySelector('path');
-    var decorBox = decor.getBBox();
+LCW.Flickr.Pixelshop.Decor.fitToBBox = function(targetBBox, decor, align){
+    var decorPath = decor.children[0];
+    var decorBBox = decor.getBBox();
     var decorWidthRatio = 0;
     var decorHeightRatio = 0;
-    var scaleFactorX = 0;
-    var scaleFactorY = 0;
     var scaleFactor = 0;
     var decorOffsetX = 0;
     var decorOffsetY = 0;
+    var decorTransformedX = 0;
+    var decorTransformedY = 0;
+    var decorTransformedWidth = 0;
+    var decorTransformedHeight = 0;
+    var decorPixel = 1;
     
-    // Fix: The offset should be calculated on the new, scaled values.
-    decorOffsetX = (decorBox.x - targetBBox.x) * 1;
-    decorOffsetY = (decorBox.y - targetBBox.y) * 1;
-    
-    decorHeightRatio = (decorBox.height / targetBBox.height) * 1;
-    decorWidthRatio = (decorBox.width / targetBBox.width) * 1;    
-    
-    console.log(decor);
-    
-    console.log('decorHeightRatio=' + decorHeightRatio + ' decorWidthRatio=' + decorWidthRatio);
-    
+    align = (align !== undefined) ? align : {'x': 'min', 'y': 'min'};
+
+    decorHeightRatio = (decorBBox.height / targetBBox.height);
+    decorWidthRatio = (decorBBox.width / targetBBox.width);
     scaleFactor = (decorWidthRatio > decorHeightRatio) ? decorWidthRatio : decorHeightRatio;
+
+    scaleFactor = (1 / scaleFactor);
+    decorPixel = (1 / scaleFactor);
+
+    decorTransformedHeight = decorBBox.height * scaleFactor;
+    decorTransformedWidth = decorBBox.width * scaleFactor;
+    decorTransformedX = decorBBox.x * scaleFactor;
+    decorTransformedY = decorBBox.y * scaleFactor;
+
+    console.log(decor);
+    console.log(decorBBox);
+    console.log(targetBBox);
     
-    // If the scale of the decore is over or under 100% we scale it down or up.
-    if(scaleFactor > 0){
-        scaleFactor = (1 / scaleFactor);
-    }else{
-        // scaling up so we dont need to flip things around
-    }
+    console.log('decorPixel = ' + decorPixel);
+    console.log('decorHeightRatio = ' + decorHeightRatio + ' decorWidthRatio = ' + decorWidthRatio);
+    console.log('targetBBox height = ' + targetBBox.height + ' targetBBox width = ' + targetBBox.width);
+    console.log('decorTransformedHeight = ' + decorTransformedHeight + ' decorTransformedWidth = ' + decorTransformedWidth);
+    console.log('Height delta = ' + (targetBBox.height - decorTransformedHeight) + ' Width delta = ' + (targetBBox.width - decorTransformedWidth));
+    console.log('decorTransformedY = ' + decorTransformedY + ' decorTransformedX = ' + decorTransformedX);
     
-    decorPath.style.transform = 'scale(' + scaleFactor + ') translateX(-' + decorOffsetX + 'px) translateY(-' + decorOffsetY + 'px)';
+    decorOffsetX = ((targetBBox.width - decorTransformedWidth) / 2) * decorPixel;
+    decorOffsetY = ((targetBBox.height - decorTransformedHeight) / 2) * decorPixel;
+    
+    decorOffsetX = decorOffsetX - decorBBox.x;
+    decorOffsetY = decorOffsetY - decorBBox.y;
+
+    console.log('decorOffsetY = ' + decorOffsetY + ' decorOffsetX = ' + decorOffsetX);
+    
+    decorPath.style.transform = 'scale(' + scaleFactor + ') translateX(' + decorOffsetX + 'px) translateY(' + decorOffsetY + 'px)';
     
     return decor;
 };
