@@ -325,13 +325,6 @@ LCW.Pixelshop.Decor.fitToBBox = function(targetBBox, decor, align){
     console.log(decorBBox);
     console.log(targetBBox);
 
-    console.log('decorPixel = ' + decorPixel);
-    console.log('decorHeightRatio = ' + decorHeightRatio + ' decorWidthRatio = ' + decorWidthRatio);
-    console.log('targetBBox height = ' + targetBBox.height + ' targetBBox width = ' + targetBBox.width);
-    console.log('decorTransformedHeight = ' + decorTransformedHeight + ' decorTransformedWidth = ' + decorTransformedWidth);
-    console.log('Height delta = ' + (targetBBox.height - decorTransformedHeight) + ' Width delta = ' + (targetBBox.width - decorTransformedWidth));
-    console.log('decorTransformedY = ' + decorTransformedY + ' decorTransformedX = ' + decorTransformedX);
-
     decorOffsetX = ((targetBBox.width - decorTransformedWidth) / 2) * decorPixel;
     decorOffsetY = ((targetBBox.height - decorTransformedHeight) / 2) * decorPixel;
 
